@@ -13,11 +13,10 @@ import hashlib
 import random
 from math import radians, sin, cos, sqrt, atan2
 
-DB_USER = 'root'
-DB_PASSWORD = 'TeChAzSuRe786'
-DB_HOST = 'localhost'
-DB_NAME = 'rtgs_grievance'
-
+DB_USER = os.getenv('DB_USER', 'root')
+DB_PASSWORD = os.getenv('DB_PASSWORD', 'TeChAzSuRe786') 
+DB_HOST = os.getenv('DB_HOST', 'localhost')
+DB_NAME = os.getenv('DB_NAME', 'rtgs_grievance')
 SQLALCHEMY_DATABASE_URI = (
     f'mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}'
 )
@@ -1180,7 +1179,6 @@ def serve_restore_dashboard():
 
 @app.route('/api/logout', methods=['POST'])
 def logout_user():
-    """Clears the user session."""
     if 'user_id' in session:
         session.pop('user_id', None)
     if 'name' in session:
@@ -1188,7 +1186,17 @@ def logout_user():
     session.pop('logged_in', None)
     return jsonify({"message": "Logged out successfully."}), 200
 
+def initialize_database():
+    global UPLOAD_FOLDER, COMPLAINT_UPLOAD_FOLDER
+    
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    os.makedirs(COMPLAINT_UPLOAD_FOLDER, exist_ok=True)
+    
+    if 'db' in globals():
+        init_db()
+
+initialize_database()
 
 if __name__ == '__main__':
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     app.run(debug=True)
+
