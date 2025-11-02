@@ -13,10 +13,10 @@ import hashlib
 import random
 from math import radians, sin, cos, sqrt, atan2
 
-DB_USER = os.getenv('DB_USER', 'root')
-DB_PASSWORD = os.getenv('DB_PASSWORD', 'TeChAzSuRe786') 
-DB_HOST = os.getenv('DB_HOST', 'localhost')
-DB_NAME = os.getenv('DB_NAME', 'rtgs_grievance')
+DB_USER = 'root'
+DB_PASSWORD = 'TeChAzSuRe786'
+DB_HOST = 'localhost'
+DB_NAME = 'rtgs_grievance'
 
 SQLALCHEMY_DATABASE_URI = (
     f'mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}'
@@ -1187,22 +1187,6 @@ def logout_user():
         session.pop('name', None)
     session.pop('logged_in', None)
     return jsonify({"message": "Logged out successfully."}), 200
-
-def initialize_database():
-    # Make sure your upload directories exist whether running locally or in Docker
-    UPLOAD_FOLDER = 'uploads/profile'
-    COMPLAINT_UPLOAD_FOLDER = 'uploads/complaints'
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    os.makedirs(COMPLAINT_UPLOAD_FOLDER, exist_ok=True)
-    
-    # Assuming init_db() is defined elsewhere and contains db.create_all()
-    # It must be called once.
-    if 'db' in globals(): # Check if db object is defined before calling init_db()
-        init_db()
-
-# This part is executed by Gunicorn (Docker/Production)
-# Gunicorn loads the 'app' object. We force initialization here.
-initialize_database()
 
 
 if __name__ == '__main__':
