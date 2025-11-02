@@ -5,3 +5,7 @@
 This project is a comprehensive, multi-modal, multi-lingual grievance redressal system built for the Andhra Pradesh government (RTGS) to address the critical lack of transparency and trust caused by fraudulent resolution claims.
 
 We leverage Gemini AI for intelligent intake and use Distributed Ledger Technology (DLT) to provide publicly auditable proof that a complaint has been physically and correctly resolved.
+
+**Key Feature  -  Outcome  -  Status**
+
+Zero-Fraud Verification  -  Officer resolution photos are validated on-site via Geo-tagging and backend Computer Vision (CV).  -  Implemented
