@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Vishwas - Citizen Registration</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #dc2626;
+        }
+        .bg-primary { background-color: var(--primary-color); }
+        .text-primary { color: var(--primary-color); }
+        .border-primary { border-color: var(--primary-color); }
+        .focus-ring { box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.3); }
+        .otp-display { 
+            padding: 1rem; 
+            background-color: #fffbeb;
+            border: 2px dashed #f59e0b; 
+            color: #d97706; 
+            margin-top: 10px; 
+            font-weight: bold;
+            text-align: center;
+            border-radius: 8px;
+        }
+        .input-with-button {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .input-with-button input {
+            flex-grow: 1;
+        }
+        .password-container { 
+            position: relative; 
+        }
+        .toggle-password { 
+            position: absolute; 
+            right: 12px; 
+            top: 50%; 
+            transform: translateY(50%); 
+            cursor: pointer; 
+            color: #6b7280; 
+        }
+    </style>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen p-4">
+
+<div class="w-full max-w-4xl bg-white p-8 sm:p-10 rounded-xl shadow-2xl border-t-4 border-primary">
+    
+    <h2 class="text-3xl font-extrabold text-gray-900 mb-2 text-center flex items-center justify-center">
+        <i class="fas fa-user-shield text-primary mr-3"></i> Citizen Registration
+    </h2>
+    <p class="text-center text-sm text-gray-500 mb-8 border-b pb-4">
+        Multi-Step Verification for Project Vishwas (The Trust Ledger)
+    </p>
+
+    <div id="message-area" class="py-3 px-4 rounded-lg text-sm text-center font-medium mb-6 hidden"></div>
+
+    <form id="registrationForm" enctype="multipart/form-data" class="space-y-6">
+        <div id="step-1" data-step="1" class="space-y-4">
+            <h3 class="text-xl font-semibold text-primary mb-4">Step 1: Identity & Mobile Verification</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="form-group">
+                    <label for="profile" class="block text-sm font-medium text-gray-700 mb-1">Profile Picture:</label>
+                    <input type="file" id="profile" name="profile" required
+                           class="w-full file:p-2 file:bg-primary file:text-white file:border-none file:rounded-lg border border-gray-300 rounded-lg p-1">
+                </div>
+                <div class="form-group">
+                    <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Full Name:</label>
+                    <input type="text" id="name" name="name" required
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus-ring focus:border-primary">
+                </div>
+            </div>
+            <div class="form-group border p-4 rounded-lg bg-gray-50">
+                <label for="mobile_number" class="block text-sm font-medium text-gray-700 mb-1">Mobile Number:</label>
+                <div class="input-with-button">
+                    <input type="tel" id="mobile_number" name="mobile_number" maxlength="10" required
+                           class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus-ring focus:border-primary">
+                    <button type="button" onclick="handleMobileVerification()"
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 w-auto">
+                        Verify & Get OTP
+                    </button>
+                </div>
+                <div id="mobile-otp-section" class="mt-4 hidden space-y-2">
+                    <div id="mobile-otp-display" class="otp-display"></div>
+                    <div class="flex gap-2">
+                        <input type="text" id="mobile_otp" maxlength="6" placeholder="Enter 6-digit OTP"
+                               class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus-ring focus:border-primary">
+                        <button type="button" onclick="verifyMobileOTP()"
+                                class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 w-auto">
+                            Verify
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="step-buttons flex justify-end">
+                <button type="button" onclick="alert('Please verify mobile to proceed.')" 
+                        class="bg-gray-400 text-white py-2 px-6 rounded-lg font-medium">
+                    Next Step (Locked)
+                </button>
+            </div>
+        </div>
+        <div id="step-2" data-step="2" class="hidden space-y-4">
+            <h3 class="text-xl font-semibold text-primary mb-4">Step 2: Email & Security Setup</h3>
+            <div class="form-group border p-4 rounded-lg bg-gray-50">
+                <label for="email_id" class="block text-sm font-medium text-gray-700 mb-1">Email ID:</label>
+                <div class="input-with-button">
+                    <input type="email" id="email_id" name="email_id" required
+                           class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus-ring focus:border-primary">
+                    <button type="button" onclick="handleEmailVerification()"
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 w-auto">
+                        Verify & Get OTP
+                    </button>
+                </div>
+                <div id="email-otp-section" class="mt-4 hidden space-y-2">
+                    <div id="email-otp-display" class="otp-display"></div>
+                    <div class="flex gap-2">
+                        <input type="text" id="email_otp" maxlength="6" placeholder="Enter 6-digit OTP"
+                               class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus-ring focus:border-primary">
+                        <button type="button" onclick="verifyEmailOTP()"
+                                class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 w-auto">
+                            Verify
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div id="password-section" class="hidden space-y-4">
+                <div class="form-group password-container">
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Create Password (Min 6 Chars):</label>
+                    <input type="password" id="password" name="password" required
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus-ring focus:border-primary">
+                    <span class="toggle-password" onclick="togglePassword('password', this)">
+                        <i class="fas fa-eye"></i>
+                    </span>
+                </div>
+                <div class="form-group password-container">
+                    <label for="confirm_password" class="block text-sm font-medium text-gray-700 mb-1">Confirm Password:</label>
+                    <input type="password" id="confirm_password" name="confirm_password" required
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus-ring focus:border-primary">
+                    <span class="toggle-password" onclick="togglePassword('confirm_password', this)">
+                        <i class="fas fa-eye"></i>
+                    </span>
+                </div>
+            </div>
+            
+            <div class="step-buttons flex justify-between">
+                <button type="button" onclick="nextStep(1)" 
+                        class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-6 rounded-lg font-medium transition duration-200">
+                    <i class="fas fa-arrow-left mr-2"></i> Back
+                </button>
+                <button type="button" onclick="validatePasswordAndGoToStep(3)" 
+                        class="bg-primary hover:bg-red-700 text-white py-2 px-6 rounded-lg font-medium transition duration-200">
+                    Next: Address Details <i class="fas fa-arrow-right ml-2"></i>
+                </button>
+            </div>
+        </div>
+        <div id="step-3" data-step="3" class="hidden space-y-4">
+            <h3 class="text-xl font-semibold text-primary mb-4">Step 3: Address & Aadhar Verification</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="form-group">
+                    <label for="pincode" class="block text-sm font-medium text-gray-700 mb-1">Pincode:</label>
+                    <input type="text" id="pincode" name="pincode" placeholder="Enter 6-digit pincode"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus-ring focus:border-primary">
+                </div>
+                <div class="form-group">
+                    <label for="landmark" class="block text-sm font-medium text-gray-700 mb-1">Landmark:</label>
+                    <input type="text" id="landmark" name="landmark" placeholder="Near school, temple, etc."
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus-ring focus:border-primary">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="address" class="block text-sm font-medium text-gray-700 mb-1">Full Address:</label>
+                <input type="text" id="address" name="address" placeholder="House/Flat No, Street Name"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus-ring focus:border-primary">
+            </div>
+            <div class="form-group border p-4 rounded-lg bg-gray-50">
+                <label for="aadhar_number" class="block text-sm font-medium text-gray-700 mb-1">Aadhar Card Number (12 Digits):</label>
+                <div class="input-with-button">
+                    <input type="text" id="aadhar_number" name="aadhar_number" maxlength="12" required
+                           class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus-ring focus:border-primary">
+                    <button type="button" onclick="handleAadharVerification()"
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 w-auto">
+                        Verify & Get OTP
+                    </button>
+                </div>
+                <div id="aadhar-otp-section" class="mt-4 hidden space-y-2">
+                    <div id="aadhar-otp-display" class="otp-display"></div>
+                    <div class="flex gap-2">
+                        <input type="text" id="aadhar_otp" maxlength="6" placeholder="Enter 6-digit OTP"
+                               class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus-ring focus:border-primary">
+                        <button type="button" onclick="verifyAadharOTP()"
+                                class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 w-auto">
+                            Verify
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="step-buttons flex justify-between">
+                <button type="button" onclick="nextStep(2)" 
+                        class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-6 rounded-lg font-medium transition duration-200">
+                    <i class="fas fa-arrow-left mr-2"></i> Back
+                </button>
+                <div id="register-button-section" class="hidden">
+                    <button type="submit" 
+                            class="bg-primary hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-lg transition duration-200">
+                        <i class="fas fa-check-circle mr-2"></i> Complete Registration
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+    <div class="mt-6 text-center pt-4 border-t border-gray-200">
+        <p class="text-sm text-gray-500">
+            Already registered? 
+            <a href="login.html" class="text-primary hover:underline font-semibold">
+                <i class="fas fa-sign-in-alt mr-1"></i> Click here to Login
+            </a>
+        </p>
+    </div>
+
+</div>
+
+<script>
+    let mobileOTP;
+    let emailOTP;
+    let aadharOTP;
+    let mobileVerified = false;
+    let emailVerified = false;
+    let aadharVerified = false;
+    function togglePassword(fieldId, iconElement) {
+        const field = document.getElementById(fieldId);
+        const icon = iconElement.querySelector('i');
+
+        if (field.type === 'password') {
+            field.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            field.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
+    function displayMessage(message, isError = false) {
+        const area = document.getElementById('message-area');
+        area.innerHTML = message;
+        area.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'otp-display');
+        
+        if (isError) {
+            area.classList.add('bg-red-100', 'text-red-700', 'border', 'border-red-300');
+        } else {
+            area.classList.add('otp-display');
+            area.style.backgroundColor = '#d4edda';
+            area.style.borderColor = '#c3e6cb';
+            area.style.color = '#155724';
+        }
+    }
+    function nextStep(step) {
+        document.querySelectorAll('[data-step]').forEach(el => el.classList.add('hidden'));
+        document.getElementById(`step-${step}`).classList.remove('hidden');
+    }
+    function handleMobileVerification() {
+        const mobile = document.getElementById('mobile_number').value;
+        if (mobile.length !== 10 || isNaN(mobile)) {
+            return displayMessage("Please enter a valid 10-digit mobile number.", true);
+        }
+        if (mobileVerified) {
+            return displayMessage("Mobile is already verified. Proceed to next step.", false);
+        }
+        mobileOTP = Math.floor(100000 + Math.random() * 900000).toString();
+        document.getElementById('mobile-otp-display').innerHTML = `SIMULATED MOBILE OTP: ${mobileOTP} (For Demo)`;
+        document.getElementById('mobile-otp-section').classList.remove('hidden');
+        displayMessage("Mobile OTP generated on-screen. Enter it to proceed.");
+    }
+
+    function verifyMobileOTP() {
+        const enteredOTP = document.getElementById('mobile_otp').value;
+        if (enteredOTP === mobileOTP) {
+            mobileVerified = true;
+            document.getElementById('mobile-otp-section').classList.add('hidden');
+            displayMessage("Mobile Verified! Proceed to the next step.", false);
+            nextStep(2);
+        } else {
+            displayMessage("Invalid Mobile OTP. Please try again.", true);
+        }
+    }
+    
+    function handleEmailVerification() {
+        if (!mobileVerified) return displayMessage("Please complete Step 1 (Mobile Verification) first.", true);
+        const email = document.getElementById('email_id').value;
+        if (!email.includes('@') || !email.includes('.')) {
+            return displayMessage("Please enter a valid email address.", true);
+        }
+        if (emailVerified) {
+            document.getElementById('password-section').classList.remove('hidden');
+            return displayMessage("Email is already verified. Set your password.", false);
+        }
+        emailOTP = Math.floor(100000 + Math.random() * 900000).toString();
+        document.getElementById('email-otp-display').innerHTML = `SIMULATED EMAIL OTP: ${emailOTP} (For Demo)`;
+        document.getElementById('email-otp-section').classList.remove('hidden');
+        displayMessage("Email OTP generated on-screen. Enter it to proceed.");
+    }
+
+    function verifyEmailOTP() {
+        const enteredOTP = document.getElementById('email_otp').value;
+        
+        if (enteredOTP === emailOTP) {
+            emailVerified = true;
+            document.getElementById('email-otp-section').classList.add('hidden');
+            document.getElementById('password-section').classList.remove('hidden');
+            displayMessage("Email Verified! Set your secure password.", false);
+        } else {
+            displayMessage("Invalid Email OTP. Please try again.", true);
+        }
+    }
+    
+    function validatePasswordAndGoToStep(step) {
+        if (!emailVerified) {
+            return displayMessage("Please complete Email Verification first.", true);
+        }
+        
+        const password = document.getElementById('password').value;
+        const confirm_password = document.getElementById('confirm_password').value;
+
+        if (password.length < 6) {
+            return displayMessage("Password must be at least 6 characters long.", true);
+        }
+        if (password !== confirm_password) {
+            return displayMessage("Passwords do not match.", true);
+        }
+
+        nextStep(step);
+    }
+    
+    function handleAadharVerification() {
+        const aadhar = document.getElementById('aadhar_number').value;
+        if (aadhar.length !== 12 || isNaN(aadhar)) {
+            return displayMessage("Please enter a valid 12-digit Aadhar number.", true);
+        }
+
+        aadharOTP = Math.floor(100000 + Math.random() * 900000).toString();
+        document.getElementById('aadhar-otp-display').innerHTML = `SIMULATED AADHAR OTP: ${aadharOTP} (For Demo)`;
+        document.getElementById('aadhar-otp-section').classList.remove('hidden');
+        displayMessage("Aadhar OTP generated on-screen. Enter it to finalize registration.", false);
+    }
+    
+    function verifyAadharOTP() {
+        const enteredOTP = document.getElementById('aadhar_otp').value;
+        if (enteredOTP === aadharOTP) {
+            aadharVerified = true;
+            document.getElementById('aadhar-otp-section').classList.add('hidden');
+            document.getElementById('register-button-section').classList.remove('hidden');
+            displayMessage("Aadhar Verified! You can now click 'Complete Registration'.", false);
+        } else {
+            displayMessage("Invalid Aadhar OTP. Please try again.", true);
+        }
+    }
+
+    document.getElementById('registrationForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const password = document.getElementById('password').value;
+        const confirm_password = document.getElementById('confirm_password').value;
+
+        if (!mobileVerified || !emailVerified || !aadharVerified) {
+            return displayMessage("Please complete all verification steps before submitting.", true);
+        }
+        if (password.length < 6 || password !== confirm_password) {
+            return displayMessage("Error: Passwords must match and be at least 6 characters.", true);
+        }
+
+        displayMessage("Submitting registration, please wait...", false);
+        const formData = new FormData(this);
+        
+        try {
+            const response = await fetch('http://127.0.0.1:5000/api/register', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                displayMessage(`SUCCESS! Your User ID is ${result.user_id}. Redirecting to login...`, false);
+                setTimeout(() => {
+                    window.location.href = 'login.html'; 
+                }, 2000); 
+
+            } else {
+                displayMessage(`ERROR: ${result.message}`, true);
+            }
+        } catch (error) {
+            displayMessage(`Network Error: Could not connect to the backend. Is your Flask server running?`, true);
+            console.error('Fetch error:', error);
+        }
+    });
+    document.addEventListener('DOMContentLoaded', () => {
+        nextStep(1);
+    });
+
+</script>
+
+</body>
+</html>

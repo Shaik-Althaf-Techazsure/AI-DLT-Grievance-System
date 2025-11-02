@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Vishwas - Officer Secure Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .red-bg-gradient {
+            background-image: linear-gradient(to right bottom, #dc2626, #b91c1c);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white max-w-lg w-full p-8 rounded-xl shadow-2xl border-t-8 border-red-700 transform hover:scale-[1.01] transition duration-300">
+        
+        <div class="text-center mb-8">
+            <i class="fas fa-user-tie text-red-700 text-5xl mb-3"></i>
+            <h1 class="text-3xl font-extrabold text-gray-900">Officer Secure Login</h1>
+            <p class="text-sm text-gray-500 mt-1">Access the RTGS Verification and DLT Portal</p>
+        </div>
+
+        <div id="message-area" class="hidden message-area rounded-lg mb-4 p-3 text-sm font-medium"></div>
+
+        <form id="officerLoginForm" class="space-y-4">
+            
+            <div>
+                <label for="officerEmail" class="block text-sm font-semibold text-gray-700 mb-1">
+                    <i class="fas fa-envelope mr-2 text-red-600"></i> Email ID (e.g., smith@rtgs.gov)
+                </label>
+                <input type="email" id="officerEmail" name="email" required 
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500" 
+                       placeholder="Enter your registered email">
+            </div>
+            
+            <div>
+                <label for="officerPassword" class="block text-sm font-semibold text-gray-700 mb-1">
+                    <i class="fas fa-lock mr-2 text-red-600"></i> Password
+                </label>
+                <input type="password" id="officerPassword" name="password" required 
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500" 
+                       placeholder="••••••••">
+            </div>
+            
+            <button type="submit" class="w-full red-bg-gradient text-white font-bold py-3 rounded-lg shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-0.5 flex items-center justify-center text-lg">
+                <i class="fas fa-sign-in-alt mr-2"></i> Secure Sign In
+            </button>
+        </form>
+
+        <div class="text-center mt-6 pt-4 border-t border-gray-200 text-sm">
+            <a href="login.html" class="text-red-600 hover:text-red-800 font-medium transition duration-300">
+                <i class="fas fa-arrow-left mr-1"></i> Back to Citizen Login
+            </a>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:5000';
+
+        function displayMessage(message, isError = false) {
+            const area = document.getElementById('message-area');
+            area.textContent = message;
+            area.classList.remove('hidden', 'success', 'error');
+            
+            if (isError) {
+                area.classList.add('error', 'bg-red-100', 'text-red-700', 'border', 'border-red-300');
+            } else {
+                area.classList.add('success', 'bg-green-100', 'text-green-700', 'border', 'border-green-300');
+            }
+            area.classList.remove('hidden');
+        }
+
+        document.getElementById('officerLoginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('officerEmail').value;
+            const password = document.getElementById('officerPassword').value;
+            
+            displayMessage("Attempting secure login...", false);
+
+            try {
+                const response = await fetch(`${API_BASE}/api/officer/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, password: password }),
+                    credentials: 'include' 
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    localStorage.setItem('officerName', result.name); 
+                    localStorage.setItem('officerId', result.officer_id); 
+
+                    displayMessage(`Success! Welcome Officer ${result.name}`, false);
+                    
+                    setTimeout(() => {
+                        window.location.href = 'officer_dashboard.html'; 
+                    }, 1000); 
+                    
+                } else {
+                    displayMessage(`Login Failed: ${result.message}`, true);
+                }
+            } catch (error) {
+                displayMessage(`Network Error: Could not connect to the backend.`, true);
+                console.error('Fetch error:', error);
+            }
+        });
+    </script>
+</body>
+</html>

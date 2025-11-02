@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Public DLT Audit - Project Vishwas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f7f9fc;
+        }
+        .container { 
+            max-width: 900px; 
+            margin-top: 50px; 
+            background: white; 
+            padding: 40px; 
+            border-radius: 16px; 
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); 
+            border-top: 8px solid #dc2626;
+        }
+        .hash-display { 
+            font-size: 0.85rem; 
+            word-break: break-all; 
+            background: #f0fdf4;
+            color: #059669;
+            padding: 12px; 
+            border-radius: 8px; 
+            font-family: monospace; 
+            border: 1px solid #d1fae5;
+        }
+        .status-verified { 
+            background-color: #d1fae5; 
+            color: #059669;
+        }
+        .status-fraud { 
+            background-color: #fee2e2; 
+            color: #b91c1c;
+        }
+        .status-pending {
+            background-color: #fef3c7; 
+            color: #b45309;
+        }
+        .proof-img {
+            width: 150px; 
+            height: 150px; 
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-4">
+<div class="container mx-auto">
+    <h2 class="text-4xl font-extrabold text-red-700 mb-2 flex items-center">
+        <i class="fas fa-lock-open mr-3"></i> Public DLT Audit Portal
+    </h2>
+    <p class="text-gray-600 mb-6 border-b pb-4">Verify the immutability of any resolution committed to the RTGS Trust Ledger.</p>
+
+    <div id="auditFormContainer" class="bg-gray-50 p-6 rounded-xl shadow-inner mb-8">
+        <label for="complaintIdInput" class="text-lg font-semibold text-gray-700 mb-2 block">Complaint ID Verification:</label>
+        <form id="auditForm" class="flex space-x-3">
+            <input type="text" id="complaintIdInput" placeholder="Enter Complaint ID (e.g., COMPLAINTXXXX...)" required 
+                   class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500">
+            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 shadow-md">
+                <i class="fas fa-search"></i> Audit
+            </button>
+        </form>
+    </div>
+
+    <div id="auditResult" class="min-h-[200px] p-6 rounded-xl shadow-lg border hidden transition-all duration-300">
+    </div>
+
+</div>
+
+<script>
+    const API_BASE = 'http://127.0.0.1:5000';
+    let currentGrievanceId = null;
+
+    function displayResult(htmlContent, type = 'pending') {
+        const resultDiv = document.getElementById('auditResult');
+        
+        resultDiv.classList.remove('hidden', 'status-verified', 'status-fraud', 'status-pending');
+        
+        if (type === 'error' || type === 'not_found') {
+             resultDiv.classList.add('status-fraud', 'border-red-400');
+        } else if (type === 'resolved') {
+             resultDiv.classList.add('status-verified', 'border-green-400');
+        } else if (type === 'pending') {
+             resultDiv.classList.add('status-pending', 'border-yellow-400');
+        }
+        
+        resultDiv.innerHTML = htmlContent;
+    }
+
+    function renderAttachments(attachments) {
+        return attachments.map(att => {
+            const fullDbPath = att.file_path;
+            const uploadsIndex = fullDbPath.indexOf('uploads/');
+            let relativePathForFlask = fullDbPath; 
+            
+            if (uploadsIndex !== -1) {
+                relativePathForFlask = fullDbPath.substring(uploadsIndex); 
+            }
+            relativePathForFlask = relativePathForFlask.replace(/\\/g, '/');
+
+            return `<img src="${API_BASE}/${relativePathForFlask}" alt="Proof" 
+                        class="proof-img rounded-lg shadow-md border hover:scale-[1.02] transition-transform" 
+                        onerror="this.src='https://placehold.co/150x150/ccc/666?text=Image+Missing'">`;
+        }).join('');
+    }
+
+    async function deleteGrievance(complaintId) {
+        if (!localStorage.getItem('officerId')) {
+            alert("Only logged-in officers can soft-delete records.");
+            return;
+        }
+        if (!currentGrievanceId) {
+             alert("Cannot determine the grievance ID for deletion.");
+             return;
+        }
+
+        if (!confirm(`WARNING: Are you sure you want to soft-delete the resolved record for ${complaintId}? It will be moved to the Restoration Portal.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/api/grievance/delete/${currentGrievanceId}`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+
+            if (response.ok) {
+                alert("Record successfully soft-deleted and moved to Restore Dashboard. Reloading page.");
+                window.location.reload(); 
+            } else {
+                const result = await response.json();
+                alert(`Deletion Failed: ${result.message}`);
+            }
+        } catch (error) {
+            console.error('Delete Error:', error);
+            alert("A network error occurred during deletion.");
+        }
+    }
+
+
+    async function runAudit(complaintId) {
+        displayResult('<p class="text-center text-red-600 font-bold"><i class="fas fa-spinner fa-spin mr-2"></i> Fetching DLT proof from ledger...</p>');
+        currentGrievanceId = null;
+
+        try {
+            const response = await fetch(`${API_BASE}/api/public/audit/${complaintId}`);
+            const data = await response.json();
+
+            if (response.status === 404) {
+                 displayResult('<p class="text-center text-red-600 font-bold">❌ Error: Complaint ID not found in the system.</p>', 'not_found');
+                 return;
+            }
+            currentGrievanceId = data.grievance_db_id;
+
+            if (data.status === 'PENDING' || data.status === 'REOPENED' || data.status === 'DELETED') {
+                const isDeleted = data.status === 'DELETED';
+                 displayResult(`
+                    <h4 class="text-2xl font-bold ${isDeleted ? 'text-gray-700' : 'text-yellow-700'} mb-2">
+                         <i class="fas ${isDeleted ? 'fa-archive' : 'fa-hourglass-half'} mr-2"></i> Audit Status: ${data.status}
+                    </h4>
+                    <p class="text-gray-700">${isDeleted ? 'This record has been archived by an officer and is currently unavailable.' : 'Resolution proof is not yet committed to the ledger.'}</p>
+                    <div class="mt-4 p-4 ${isDeleted ? 'bg-gray-100' : 'bg-yellow-50'} rounded-lg">
+                        <p class="font-semibold">Grievance Type:</p>
+                        <p>${data.grievance_type}</p>
+                    </div>
+                 `, isDeleted ? 'error' : 'pending');
+                 return;
+            }
+
+            const proof = data.dlt_proof;
+            const isFraud = data.status === 'FRAUD' || (proof && proof.is_fraudulent === true);
+            const statusType = isFraud ? 'fraud' : 'resolved';
+            const statusColor = isFraud ? 'text-red-700' : 'text-green-700';
+            const icon = isFraud ? 'fa-triangle-exclamation' : 'fa-check-circle';
+            
+            const resolutionProofsHtml = renderAttachments(data.resolution_attachments || []);
+            const citizenProofsHtml = renderAttachments(data.citizen_attachments || []);
+            const isOfficerLoggedIn = localStorage.getItem('officerId');
+            let deleteButtonHtml = '';
+
+            if (isOfficerLoggedIn) {
+                 deleteButtonHtml = `
+                    <div class="flex justify-end mb-4">
+                        <button onclick="deleteGrievance('${complaintId}')" 
+                                class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg text-sm shadow-md transition duration-300">
+                            <i class="fas fa-trash-alt mr-2"></i> Soft Delete Record
+                        </button>
+                    </div>
+                 `;
+            }
+
+
+            let resultHtml = `
+                ${deleteButtonHtml}
+                <h4 class="text-2xl font-bold ${statusColor} mb-4 flex items-center">
+                    <i class="fas ${icon} mr-3"></i> 
+                    ${isFraud ? 'FRAUDULENT RESOLUTION FLAGGED!' : 'DLT VERIFIED (RESOLVED)'}
+                </h4>
+                
+                <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                    <h5 class="font-bold text-lg text-gray-800 mb-2">Complaint Summary</h5>
+                    <p class="text-sm"><strong>Type:</strong> ${data.grievance_type}</p>
+                    <p class="text-sm"><strong>Summary:</strong> ${data.professional_summary}</p>
+                </div>
+
+                <h5 class="font-bold text-lg ${statusColor} mb-3 border-t pt-3">Resolution Officer Details</h5>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm bg-white p-3 rounded-lg border">
+                    <div><strong>Officer Name:</strong> <span class="font-bold">${proof.officer_name || 'N/A'}</span></div>
+                    <div><strong>Officer ID:</strong> ${proof.officer_id}</div>
+                    <div><strong>Verification Date:</strong> ${proof.verified_at}</div>
+                    <div><strong>AI CV Score:</strong> <span class="font-bold">${proof.cv_score}</span></div>
+                    <div><strong>Grievance Status:</strong> <span class="font-bold">${data.status}</span></div>
+                </div>
+                
+                <div class="mt-6">
+                    <p class="font-semibold text-gray-700 mb-3 border-t pt-4">Resolution Proof (Officer Submission):</p>
+                    <div class="flex space-x-4 overflow-x-auto p-2 bg-gray-50 rounded-lg">
+                        ${resolutionProofsHtml || '<p class="text-gray-500 italic">No resolution photos found.</p>'}
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <p class="font-semibold text-gray-700 mb-3 border-t pt-4">Original Citizen Proof (Before):</p>
+                    <div class="flex space-x-4 overflow-x-auto p-2 bg-gray-50 rounded-lg">
+                        ${citizenProofsHtml || '<p class="text-gray-500 italic">No citizen proof photos found.</p>'}
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <p class="font-semibold text-gray-700 mb-2">Immutable Resolution Proof Hash (SHA-256):</p>
+                    <div class="hash-display">${proof.proof_hash}</div>
+                    <p class="text-xs text-gray-500 mt-1">This DLT hash proves the resolution data is permanently logged and unalterable.</p>
+                </div>
+                
+            `;
+            displayResult(resultHtml, statusType);
+
+        } catch (error) {
+            displayResult('<p class="text-center text-red-600 font-bold">❌ Network or Server Error while auditing.</p>', 'error');
+            console.error('Audit Fetch Error:', error);
+        }
+    }
+    document.getElementById('auditForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const complaintId = document.getElementById('complaintIdInput').value.trim();
+        runAudit(complaintId);
+    });
+    document.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const complaintIdFromUrl = urlParams.get('id');
+        if (complaintIdFromUrl) {
+            document.getElementById('complaintIdInput').value = complaintIdFromUrl;
+            runAudit(complaintIdFromUrl);
+        }
+    });
+
+</script>
+</body>
+</html>

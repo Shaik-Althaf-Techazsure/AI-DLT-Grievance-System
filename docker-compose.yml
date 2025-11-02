@@ -1,0 +1,54 @@
+version: '4.49.0'
+
+services:
+  # 1. APPLICATION SERVICE (Flask Backend)
+  app:
+    # Use the current directory to find the Dockerfile and build the image
+    build: .
+    container_name: rtgs-flask-app
+    # Map the container port (5000) to the host machine port (5000)
+    ports:
+      - "5000:5000"
+    # Mount the local project files into the container for easy development/live code changes
+    volumes:
+      - .:/usr/src/app
+    # Set environment variables for the application container
+    environment:
+      # CRITICAL: This is where you set your Gemini Key for local jury testing
+      # You should provide this key in a .env file locally.
+      GEMINI_API_KEY: ${GEMINI_API_KEY} 
+      # Database connection details (matching the 'db' service credentials below)
+      DB_USER: rtgs_user
+      DB_PASSWORD: rtgs_password
+      DB_HOST: db # Internal DNS name of the database container
+      DB_NAME: rtgs_grievance
+    # The depends_on and the ENTRYPOINT script (docker-entrypoint.sh)
+    # ensure the app waits for the database before trying to connect.
+    depends_on:
+      - db
+    restart: "no" # Use 'no' during debugging to see logs clearly
+
+  # 2. DATABASE SERVICE (MariaDB)
+  db:
+    image: mariadb:10.7
+    container_name: rtgs-mariadb
+    # Mount a volume to persist database data across container restarts
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    # Set environment variables for the MariaDB setup
+    environment:
+      # Initial credentials for the root user
+      MYSQL_ROOT_PASSWORD: rtgs_root_password
+      # Credentials for the application's user
+      MYSQL_USER: rtgs_user
+      MYSQL_PASSWORD: rtgs_password
+      # Name of the database your Flask app will connect to
+      MYSQL_DATABASE: rtgs_grievance
+    # Expose port 3307 on the host to connect to 3306 inside the container
+    ports:
+      - "3307:3306"
+    restart: always
+
+# Define external volumes for persistent database storage
+volumes:
+  mariadb_data:

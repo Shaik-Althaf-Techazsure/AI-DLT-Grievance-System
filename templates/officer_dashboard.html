@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Officer DLT Resolution Portal - Project Vishwas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        .status-PENDING { border-left-color: #ff9800; }
+        .status-RESOLVED { border-left-color: #4CAF50; }
+        .status-REOPENED { border-left-color: #F44336; }
+        .status-FRAUD { border-left-color: #800080; }
+        .grievance-card { transition: box-shadow 0.2s; cursor: pointer; } 
+        .grievance-card:hover { box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1); }
+        .img-preview-res { width: 100px; height: 100px; object-fit: cover; border-radius: 4px; }
+        .history-card { opacity: 0.7; border-left: 5px solid #ccc; margin-top: 10px; }
+        .detail-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #eee; }
+        .urgent-highlight { 
+            border: 2px solid #ef4444 !important;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.4); 
+            animation: pulse-border 1.5s infinite;
+        }
+
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div class="container mx-auto p-4 sm:p-8">
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-8 p-6 bg-red-700 text-white shadow-xl rounded-xl">
+            <h1 class="text-3xl font-extrabold flex items-center">
+                <i class="fas fa-user-shield mr-3"></i> Officer Resolution Portal
+            </h1>
+            <div class="text-lg font-semibold mt-2 sm:mt-0">
+                Welcome, <span id="officerName">Officer</span> | ID: <span id="officerId">...</span>
+                <button onclick="logoutOfficer()" class="ml-4 bg-red-500 hover:bg-red-800 text-white text-sm font-bold py-1 px-3 rounded-full transition duration-300">Logout</button>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-6 mb-8 text-center">
+            <div class="p-4 bg-blue-100 rounded-xl shadow-lg border-b-4 border-blue-500">
+                <p class="text-3xl font-extrabold text-blue-700" id="taskTotal">0</p>
+                <p class="text-sm font-medium text-gray-600">Total Assigned</p>
+            </div>
+
+            <div class="p-4 bg-yellow-50 rounded-xl shadow-lg border-b-4 border-yellow-500">
+                <p class="text-3xl font-extrabold text-yellow-700" id="taskPending">0</p>
+                <p class="text-sm font-medium text-gray-600">Pending</p>
+            </div>
+            
+            <div class="p-4 bg-green-50 rounded-xl shadow-lg border-b-4 border-green-500">
+                <p class="text-3xl font-extrabold text-green-700" id="taskResolved">0</p>
+                <p class="text-sm font-medium text-gray-600">Resolved</p>
+            </div>
+            
+            <div class="p-4 bg-red-50 rounded-xl shadow-lg border-b-4 border-red-500">
+                <p class="text-3xl font-extrabold text-red-700" id="taskFraud">0</p>
+                <p class="text-sm font-medium text-gray-600">Fraud Detected</p>
+            </div>
+            
+            <div class="p-4 bg-indigo-100 rounded-xl shadow-lg border-b-4 border-indigo-500">
+                <p class="text-3xl font-extrabold text-indigo-700" id="taskPerformance">N/A</p>
+                <p class="text-sm font-medium text-gray-600">Performance Score</p>
+            </div>
+        </div>
+        
+        <div class="flex justify-between items-center mb-4 p-3 bg-white rounded-lg shadow-md border-b">
+            <h2 class="text-xl font-bold text-gray-800">Actionable Tasks</h2>
+            <div class="flex space-x-4 text-sm">
+                 <select id="seriousnessFilter" onchange="applyFilters()" class="p-2 border rounded-lg">
+                    <option value="ALL">Seriousness: ALL</option>
+                    <option value="IMMEDIATE">IMMEDIATE Action</option>
+                    <option value="STANDARD">STANDARD Action</option>
+                </select>
+                <select id="sortOrder" onchange="applyFilters()" class="p-2 border rounded-lg">
+                    <option value="newest">Sort By: Newest First</option>
+                    <option value="oldest">Sort By: Oldest First</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="pendingList" class="space-y-6 mb-8">
+            <p class="text-center text-gray-500 p-4 bg-white rounded-xl shadow-md">Loading tasks...</p>
+        </div>
+
+        <h2 class="text-2xl font-bold mb-4 text-gray-800 flex items-center">
+            <i class="fas fa-history mr-2"></i> Resolution History (Resolved/Fraud)
+        </h2>
+        <div id="historyList" class="space-y-4">
+            <p class="text-center text-gray-500 p-4 bg-white rounded-xl shadow-md">Loading history...</p>
+        </div>
+
+    </div>
+
+    <div id="resolutionModal" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden items-center justify-center p-4 z-50" onclick="closeModal(event)">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 overflow-y-auto max-h-screen" onclick="event.stopPropagation()">
+            
+            <h3 class="text-2xl font-bold mb-4 border-b pb-2 text-red-700">Grievance Details & DLT Commit</h3>
+            <p id="modalComplaintId" class="mb-4 font-semibold text-sm bg-gray-100 p-2 rounded"></p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h4 class="font-bold text-lg text-red-700 mb-2">Citizen Context</h4>
+                    <div id="citizenDetails" class="mb-4 text-sm bg-gray-50 p-3 rounded-lg">
+                    </div>
+                    
+                    <h4 class="font-bold text-lg text-red-700 mb-2 border-t pt-4">Complaint Details</h4>
+                    <div id="complaintDetails" class="mb-4 text-sm">
+                    </div>
+                    
+                    <div class="mb-4 border-t pt-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Before Proof (Citizen Uploads):</label>
+                        <div id="citizenProofArea" class="flex space-x-2 overflow-x-auto">
+                        </div>
+                    </div>
+                    
+                    <button id="resolveButtonTop" class="w-full bg-green-600 text-white py-2 rounded-lg mt-4 hidden" onclick="prepareForResolution()">
+                        Go to Resolution Form
+                    </button>
+                    
+                </div>
+                
+                <div id="resolutionSection">
+                    <h4 class="font-bold text-lg text-red-700 mb-2">DLT Resolution Form</h4>
+                    <form id="resolutionForm">
+                        <input type="hidden" id="resolutionGrievanceId" name="complaint_id">
+                        
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">1. Resolution Proof (After Image/Video):</label>
+                            <input type="file" id="resolutionProof" name="after_photo" accept="image/*,video/*" required class="w-full text-sm" onchange="showResolutionPreview(event)">
+                            <div id="resolutionPreviewArea" class="mt-2">
+                                <img id="resolutionPreviewImg" class="img-preview-res border hidden" src="" alt="Resolution Preview">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">2. Mock GPS Location:</label>
+                            <input type="text" id="mockGps" name="mock_gps" value="17.72, 83.30" class="w-full p-2 border rounded-lg" required>
+                            <p class="text-xs text-gray-500 mt-1">Change to "1.0, 1.0" to test FRAUD/Anomaly flag.</p>
+                        </div>
+
+                        <div id="resolutionMessage" class="mt-4 p-3 rounded-lg text-center hidden"></div>
+
+                        <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg text-xl mt-4 transition duration-300">
+                            <i class="fas fa-lock mr-2"></i> Submit & Commit to DLT Ledger
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+             <div class="mt-6 flex justify-end">
+                <button type="button" onclick="closeModal()" class="bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">
+                    Close Details
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+<script>
+    const API_BASE = 'http://127.0.0.1:5000';
+    let currentGrievances = [];
+    function logoutOfficer() {
+        fetch(`${API_BASE}/api/officer/logout`, { method: 'POST', credentials: 'include' })
+            .finally(() => {
+                localStorage.removeItem('officerName');
+                localStorage.removeItem('officerId');
+                window.location.href = 'officer_login.html'; 
+            });
+    }
+    
+    function showResolutionPreview(event) {
+        const file = event.target.files[0];
+        const previewImg = document.getElementById('resolutionPreviewImg');
+
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImg.src = e.target.result;
+                previewImg.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        } else {
+            previewImg.classList.add('hidden');
+        }
+    }
+    function openModal(grievanceId) {
+        document.getElementById('resolutionSection').classList.add('hidden');
+        document.getElementById('resolveButtonTop').classList.remove('hidden');
+        document.getElementById('citizenDetails').innerHTML = '<p class="text-center">Loading citizen details...</p>';
+        document.getElementById('complaintDetails').innerHTML = '';
+        const grievance = currentGrievances.find(g => g.id === grievanceId);
+        if (!grievance) return;
+        document.getElementById('resolutionGrievanceId').value = grievance.complaint_id; 
+
+        document.getElementById('modalComplaintId').textContent = `Complaint ID: ${grievance.complaint_id}`;
+        fetchComplaintDetails(grievanceId);
+
+        document.getElementById('resolutionModal').classList.remove('hidden');
+        document.getElementById('resolutionModal').classList.add('flex');
+    }
+    
+    function prepareForResolution() {
+        document.getElementById('resolutionSection').classList.remove('hidden');
+        document.getElementById('resolveButtonTop').classList.add('hidden');
+    }
+
+    function closeModal() {
+        document.getElementById('resolutionModal').classList.add('hidden');
+        document.getElementById('resolutionModal').classList.remove('flex');
+        document.getElementById('resolutionForm').reset();
+        document.getElementById('resolutionPreviewImg').classList.add('hidden'); 
+        document.getElementById('resolutionMessage').classList.add('hidden'); 
+    }
+    async function fetchComplaintDetails(grievanceId) {
+        try {
+            const mockGrievance = currentGrievances.find(g => g.id === grievanceId);
+            if (!mockGrievance) throw new Error("Grievance details not found locally.");
+            const data = {
+                citizen: {
+                    name: "Mock Citizen",
+                    mobile: "99999XXXXX",
+                    email: "citizen@email.com",
+                    aadhar_last_4: "9123",
+                    address: "123 Mock Street, Vizag"
+                },
+                grievance: {
+                    id: mockGrievance.id,
+                    grievance_type: mockGrievance.grievance_type, 
+                    location_tag: mockGrievance.location_tag,     
+                    filed_at: mockGrievance.created_at,
+                    raw_text: mockGrievance.raw_text || "N/A (Raw text not available in list data)",
+                    professional_text: mockGrievance.professional_text,
+                    attachments: mockGrievance.attachment_path ? [{ file_path: mockGrievance.attachment_path }] : []
+                }
+            };
+            
+            renderCitizenDetails(data.citizen);
+            renderComplaintDetails(data.grievance);
+
+        } catch (error) {
+            document.getElementById('citizenDetails').innerHTML = '<p class="text-red-500">Error fetching full details. Check console.</p>';
+            console.error('Detail fetch error:', error);
+        }
+    }
+
+    function renderCitizenDetails(citizen) {
+        const area = document.getElementById('citizenDetails');
+        area.innerHTML = `
+            <div class="detail-row"><strong>Citizen Name:</strong> ${citizen.name}</div>
+            <div class="detail-row"><strong>Mobile:</strong> ${citizen.mobile}</div>
+            <div class="detail-row"><strong>Email:</strong> ${citizen.email}</div>
+            <div class="detail-row"><strong>Aadhar (Last 4):</strong> XXXX-XXXX-${citizen.aadhar_last_4}</div>
+            <div class="detail-row"><strong>Address:</strong> ${citizen.address}</div>
+        `;
+    }
+    
+    function renderComplaintDetails(grievance) {
+        const detailArea = document.getElementById('complaintDetails');
+        const proofArea = document.getElementById('citizenProofArea');
+        const resolutionBtn = document.getElementById('resolveButtonTop');
+        const immediateTypes = ['Electrical (Streetlight Outage)', 'Water Supply & Leakage'];
+        const seriousness = immediateTypes.includes(grievance.grievance_type) ? 'IMMEDIATE' : 'STANDARD';
+        const currentGrievance = currentGrievances.find(g => g.id === grievance.id);
+        if (currentGrievance && (currentGrievance.status === 'PENDING' || currentGrievance.status === 'REOPENED')) {
+             resolutionBtn.classList.remove('hidden');
+        } else {
+             resolutionBtn.classList.add('hidden');
+        }
+
+        detailArea.innerHTML = `
+            <div class="detail-row"><strong>Type:</strong> ${grievance.grievance_type}</div>
+            <div class="detail-row"><strong>Location:</strong> ${grievance.location_tag}</div>
+            <div class="detail-row"><strong>Filed:</strong> ${grievance.filed_at}</div>
+            <div class="detail-row">
+                <strong>Priority:</strong> 
+                <span class="px-2 py-0.5 rounded-full text-xs font-semibold ${seriousness === 'IMMEDIATE' ? 'bg-red-200 text-red-800' : 'bg-yellow-100 text-yellow-800'}">
+                    ${seriousness}
+                </span>
+            </div>
+            <div class="mt-4 p-3 bg-gray-100 rounded-lg">
+                <strong>Gemini AI Refined Summary:</strong> <p class="italic text-gray-700 mt-1">${grievance.professional_text}</p>
+                <strong>Original Text:</strong> <p class="italic text-gray-500 text-xs mt-1">${grievance.raw_text}</p>
+            </div>
+        `;
+        proofArea.innerHTML = '';
+        if (grievance.attachments && grievance.attachments.length > 0) {
+            grievance.attachments.forEach(att => {
+                const fullDbPath = att.file_path;
+                
+                const uploadsIndex = fullDbPath.indexOf('uploads/');
+                let relativePathForFlask = fullDbPath; 
+
+                if (uploadsIndex !== -1) {
+                    relativePathForFlask = fullDbPath.substring(uploadsIndex); 
+                } 
+                
+                relativePathForFlask = relativePathForFlask.replace(/\\/g, '/');
+                
+                const img = document.createElement('img');
+                img.src = `${API_BASE}/${relativePathForFlask}`; 
+                img.classList.add('img-preview-res', 'shadow-md', 'border');
+                img.onerror = function() {
+                    this.src = 'https://placehold.co/100x100/CC0000/FFFFFF?text=File+Error'; 
+                };
+                proofArea.appendChild(img);
+            });
+        } else {
+             proofArea.innerHTML = '<p class="text-gray-500 italic">Citizen provided no photo proof.</p>';
+        }
+    }
+    function applyFilters() {
+        const sortOrder = document.getElementById('sortOrder').value;
+        const seriousness = document.getElementById('seriousnessFilter').value;
+        fetchOfficerTasks(sortOrder, seriousness);
+    }
+
+    async function fetchOfficerTasks(sortOrder = 'newest', seriousness = 'ALL') {
+        const officerId = localStorage.getItem('officerId');
+        if (!officerId) {
+            console.error("Officer ID not found. Redirecting to login.");
+            return logoutOfficer();
+        }
+        document.getElementById('officerId').textContent = officerId;
+        document.getElementById('officerName').textContent = localStorage.getItem('officerName');
+
+        try {
+            let url = `${API_BASE}/api/officer/dashboard?sort_by=${sortOrder}&seriousness=${seriousness}`;
+            
+            const response = await fetch(url, { credentials: 'include' });
+            
+            if (response.status === 401) return logoutOfficer();
+
+            const data = await response.json();
+            data.grievances.forEach(g => {
+                const immediateTypes = ['Electrical (Streetlight Outage)', 'Water Supply & Leakage'];
+                g.seriousness = immediateTypes.includes(g.grievance_type) ? 'IMMEDIATE' : 'STANDARD';
+            });
+            
+            currentGrievances = data.grievances; 
+            const kpis = data.kpis || {};
+            document.getElementById('taskTotal').textContent = kpis.total_assigned || 0;
+            document.getElementById('taskPending').textContent = kpis.pending || 0;
+            document.getElementById('taskResolved').textContent = kpis.resolved || 0;
+            document.getElementById('taskFraud').textContent = kpis.fraud_count || 0; 
+            document.getElementById('taskPerformance').textContent = `${kpis.performance_score || 0}%`;
+            
+            renderPendingList(data.grievances);
+            renderHistoryList(data.grievances);
+
+        } catch (error) {
+            document.getElementById('pendingList').innerHTML = '<p class="text-red-600 text-center p-4">Error fetching tasks. Check server logs.</p>';
+            document.getElementById('historyList').innerHTML = '<p class="text-red-600 text-center p-4">Error fetching history. Check console for API errors.</p>';
+            console.error('Fetch error:', error);
+            throw error;
+        }
+    }
+    
+    function createGrievanceCard(g, isHistory = false) {
+        const statusClass = `status-${g.status}`;
+        const isUrgent = g.seriousness === 'IMMEDIATE'; 
+        
+        const card = document.createElement('div');
+        card.classList.add('p-6', 'bg-white', 'rounded-xl', 'shadow-lg', 'border-l-4', statusClass, 'grievance-card');
+        if (isUrgent && !isHistory) {
+            card.classList.add('urgent-highlight', 'border-red-500', 'ring-4', 'ring-red-200');
+        } else if (isHistory) {
+            card.classList.add('history-card', 'mt-4'); 
+        }
+
+        card.setAttribute('onclick', `openModal(${g.id})`); 
+
+        let buttonHtml = '';
+        if (g.status === 'PENDING' || g.status === 'REOPENED') {
+            buttonHtml = `<button onclick="event.stopPropagation(); openModal(${g.id})" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition duration-300">
+                                <i class="fas fa-search mr-2"></i> View Details
+                              </button>`;
+        } else {
+             const actionText = g.status === 'RESOLVED' ? 'DLT COMMITTED' : 'FRAUD DETECTED';
+             const actionColor = g.status === 'RESOLVED' ? 'text-green-600' : 'text-red-600';
+             buttonHtml = `<p class="text-sm font-semibold ${actionColor}"><i class="fas fa-check-circle mr-1"></i> ${actionText}</p>`;
+        }
+        
+        card.innerHTML = `
+            <div class="flex justify-between items-center mb-3">
+                <p class="text-xl font-bold text-gray-800">${g.grievance_type}</p>
+                <div class="flex items-center space-x-2">
+                    ${isUrgent && !isHistory ? `<span class="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full animate-pulse"><i class="fas fa-exclamation-triangle"></i> URGENT</span>` : ''}
+                    <span class="px-3 py-1 text-sm font-bold text-white rounded-full ${g.status === 'PENDING' ? 'bg-yellow-600' : g.status === 'RESOLVED' ? 'bg-green-600' : 'bg-red-600'}">${g.status}</span>
+                </div>
+            </div>
+            
+            <p class="text-sm text-gray-700 mb-1"><strong>ID:</strong> ${g.complaint_id} | <strong>Filed:</strong> ${g.created_at}</p>
+            <p class="text-sm text-gray-700 mb-3"><strong>Location:</strong> ${g.location_tag}</p>
+            
+            <div class="mt-2 bg-blue-50 p-3 rounded-lg border-l-4 border-blue-400">
+                <p class="text-xs font-semibold text-blue-700 mb-1">Gemini AI Refined Summary:</p>
+                <p class="text-sm text-gray-800">${g.professional_text}</p>
+            </div>
+
+            <div class="mt-4 flex justify-end">
+                ${buttonHtml}
+            </div>
+        `;
+        return card;
+    }
+
+    function renderPendingList(grievances) {
+        const pendingListDiv = document.getElementById('pendingList');
+        pendingListDiv.innerHTML = ''; 
+        let pendingTasks = grievances.filter(g => g.status === 'PENDING' || g.status === 'REOPENED');
+        
+        const filterValue = document.getElementById('seriousnessFilter').value;
+        if (filterValue !== 'ALL') {
+            pendingTasks = pendingTasks.filter(g => g.seriousness === filterValue);
+        }
+
+        if (pendingTasks.length === 0) {
+            pendingListDiv.innerHTML = '<p class="text-center text-gray-600 p-4 bg-white rounded-xl shadow-md">No urgent pending assignments matching current filters.</p>';
+            return;
+        }
+        pendingTasks.sort((a, b) => {
+            if (a.seriousness === 'IMMEDIATE' && b.seriousness !== 'IMMEDIATE') return -1;
+            if (a.seriousness !== 'IMMEDIATE' && b.seriousness === 'IMMEDIATE') return 1;
+            return new Date(b.created_at) - new Date(a.created_at);
+        });
+
+        pendingTasks.forEach(g => {
+            pendingListDiv.appendChild(createGrievanceCard(g, false));
+        });
+    }
+
+    function renderHistoryList(grievances) {
+        const historyListDiv = document.getElementById('historyList');
+        historyListDiv.innerHTML = ''; 
+
+        const historyTasks = grievances.filter(g => g.status === 'RESOLVED' || g.status === 'FRAUD');
+
+        if (historyTasks.length === 0) {
+            historyListDiv.innerHTML = '<p class="text-center text-gray-600 p-4 bg-white rounded-xl shadow-md">No historical resolutions recorded yet.</p>';
+            return;
+        }
+
+        historyTasks.forEach(g => {
+            historyListDiv.appendChild(createGrievanceCard(g, true));
+        });
+    }
+
+    document.getElementById('resolutionForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const grievanceId = document.getElementById('resolutionGrievanceId').value;
+        const resolutionMessage = document.getElementById('resolutionMessage');
+        
+        resolutionMessage.className = 'mt-4 p-3 rounded-lg text-sm text-center bg-blue-100 text-blue-700';
+        resolutionMessage.textContent = 'Submitting proof and committing DLT Hash...';
+        resolutionMessage.classList.remove('hidden');
+
+        const formData = new FormData(this);
+        
+        try {
+            const response = await fetch(`${API_BASE}/api/officer/resolve_grievance`, { 
+                method: 'POST',
+                body: formData, 
+                credentials: 'include' 
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok && response.status === 200) {
+                resolutionMessage.className = 'mt-4 p-3 rounded-lg text-sm text-center bg-green-100 text-green-700';
+                resolutionMessage.innerHTML = `**SUCCESS!** Hash Committed to Ledger: 
+                    <br><span class='text-xs font-mono break-all'>${result.dlt_hash}</span>
+                    <br><strong>AI CV Score:</strong> ${result.cv_score} | 
+                    <strong>Message:</strong> ${result.cv_message}
+                `;
+                
+                setTimeout(() => {
+                    closeModal();
+                    applyFilters();
+                }, 2000);
+                
+            } else if (result.is_fraudulent === true || response.status === 400 || response.status === 403) {
+                 resolutionMessage.className = 'mt-4 p-3 rounded-lg text-sm text-center bg-red-100 text-red-700';
+                 resolutionMessage.innerHTML = `**FRAUD/ERROR:** ${result.message}<br>CV Score: ${result.cv_score || 'N/A'}`;
+            } else {
+                resolutionMessage.className = 'mt-4 p-3 rounded-lg text-sm text-center bg-red-100 text-red-700';
+                resolutionMessage.textContent = `Submission Failed: ${result.message}`;
+            }
+        } catch (error) {
+            resolutionMessage.className = 'mt-4 p-3 rounded-lg text-sm text-center bg-red-100 text-red-700';
+            resolutionMessage.textContent = `Network Error: Could not connect to backend.`;
+            console.error('Fetch error:', error);
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const storedName = localStorage.getItem('officerName');
+        if (storedName) {
+            applyFilters();
+        } else {
+             window.location.href = 'officer_login.html'; 
+        }
+    });
+</script>
+</body>
+</html>

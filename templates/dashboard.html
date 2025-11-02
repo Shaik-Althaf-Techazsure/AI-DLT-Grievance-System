@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Citizen Dashboard - Project Vishwas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        .rag-status-GREEN { background-color: #4CAF50; }
+        .rag-status-YELLOW { background-color: #FFC107; }
+        .rag-status-RED { background-color: #F44336; }
+        .status-PENDING { color: #FF9800; font-weight: bold; }
+        .status-RESOLVED { color: #4CAF50; font-weight: bold; }
+        .status-REOPENED { color: #F44336; font-weight: bold; }
+        .status-FRAUD { color: #800080; font-weight: bold; }
+        .kpi-card { transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s; cursor: pointer; } 
+        .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1); background-color: #f9fafb; }
+        .complaint-form-container { max-height: 0; overflow: hidden; transition: max-height 0.5s ease-in-out; }
+        .complaint-form-container.open { max-height: 2000px; }
+        .img-preview { width: 80px; height: 80px; object-fit: cover; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <div class="container mx-auto p-4 sm:p-8">
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-8 p-6 bg-blue-700 text-white shadow-xl rounded-xl">
+            <h1 class="text-3xl font-extrabold flex items-center">
+                <i class="fas fa-home mr-3"></i> Citizen Dashboard
+            </h1>
+            <div class="text-lg font-semibold mt-2 sm:mt-0">
+                Welcome, <span id="userName">Citizen</span>!
+                <button onclick="logoutCitizen()" class="ml-4 bg-blue-500 hover:bg-blue-800 text-white text-sm font-bold py-1 px-3 rounded-full transition duration-300">Logout</button>
+            </div>
+        </div>
+        <h2 class="text-2xl font-bold mb-6 text-gray-800">Your Complaints KPI Summary</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 mb-10">
+            <div onclick="fetchGrievances(document.getElementById('categoryFilter').value, 'All')" class="kpi-card p-4 bg-pink-100 rounded-xl shadow-lg text-center border-b-4 border-pink-500">
+                <p class="text-3xl font-extrabold text-pink-700" id="kpiTotal">0</p>
+                <p class="text-sm font-medium text-gray-600">Total</p>
+            </div>
+            <div onclick="fetchGrievances(document.getElementById('categoryFilter').value, 'RESOLVED')" class="kpi-card p-4 bg-green-100 rounded-xl shadow-lg text-center border-b-4 border-green-500">
+                <p class="text-3xl font-extrabold text-green-700" id="kpiResolved">0</p>
+                <p class="text-sm font-medium text-gray-600">Resolved</p>
+            </div>
+            <div onclick="fetchGrievances(document.getElementById('categoryFilter').value, 'PENDING')" class="kpi-card p-4 bg-yellow-100 rounded-xl shadow-lg text-center border-b-4 border-yellow-500">
+                <p class="text-3xl font-extrabold text-yellow-700" id="kpiPending">0</p>
+                <p class="text-sm font-medium text-gray-600">Pending</p>
+            </div>
+        
+            <div onclick="fetchGrievances(document.getElementById('categoryFilter').value, 'FRAUD')" class="kpi-card p-4 bg-red-100 rounded-xl shadow-lg text-center border-b-4 border-red-500">
+                <p class="text-3xl font-extrabold text-red-700" id="kpiFake">0</p>
+                <p class="text-sm font-medium text-gray-600">Fake/Fraud</p>
+            </div>
+
+            <div class="kpi-card p-4 bg-indigo-100 rounded-xl shadow-lg text-center border-b-4 border-indigo-500">
+                <p class="text-3xl font-extrabold text-indigo-700" id="kpiRewards">0</p>
+                <p class="text-sm font-medium text-gray-600">Reward Points</p>
+            </div>
+
+            <div id="kpiRAG" class="kpi-card p-4 rag-status-GREEN rounded-xl shadow-lg text-center border-b-4 border-gray-900">
+                <p class="text-3xl font-extrabold text-white" id="kpiRAGText">GREEN</p>
+                <p class="text-sm font-medium text-white">RAG Status</p>
+            </div>
+        </div>
+        
+        <div class="text-center mb-8">
+            <button onclick="toggleComplaintForm()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg transition duration-300">
+                <i class="fas fa-plus-circle mr-2"></i> File a New Grievance
+            </button>
+        </div>
+
+        <div id="complaintFormContainer" class="complaint-form-container bg-white p-6 rounded-xl shadow-lg mb-8 border border-gray-200">
+            <h3 class="text-2xl font-bold mb-4 text-indigo-800 border-b pb-2">RTGS AI-Powered Submission</h3>
+             <p class="text-xs text-gray-500 mb-2">
+                <span id="draftLoadStatus" class="mr-4"></span>
+                <span id="draftSaveStatus">Auto-save inactive.</span>
+            </p>
+            <form id="complaintForm">
+                
+                <div class="mb-4">
+                    <label for="raw_text" class="block text-lg font-medium text-gray-700 mb-1">1. Complaint Details (Max 10000 chars):</label>
+                    <textarea id="raw_text" name="raw_text" rows="5" maxlength="10000" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" placeholder="Describe the issue clearly in Telugu or English (e.g., 'There is a big pothole on MG Road' or 'మా వీధిలో నీరు లీక్ అవుతోంది')." required></textarea>
+                </div>
+                
+                <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 mb-4">
+                    <button type="button" onclick="mockSpeechToText()" class="w-full sm:w-1/3 bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded-lg transition duration-300">
+                        <i class="fas fa-microphone mr-2"></i> MOCK Speech to Text
+                    </button>
+                    <button type="button" onclick="runGeminiAI()" class="w-full sm:w-2/3 bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-lg transition duration-300">
+                        <i class="fas fa-robot mr-2"></i> Gemini AI: Classify & Refine Text
+                    </button>
+                </div>
+
+                <div id="aiOutput" class="mb-6 p-4 border border-blue-300 bg-blue-50 rounded-lg hidden">
+                    <p class="font-bold text-blue-700 mb-2">Gemini AI Analysis:</p>
+                    <p class="text-sm"><strong>Classification:</strong> <span id="aiClassification" class="text-indigo-800 font-semibold">...</span></p>
+                    <p class="text-sm mt-1"><strong>Refined Text (For Officer):</strong> <span id="aiRefinedText" class="text-gray-800">...</span></p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label for="location" class="block text-sm font-medium text-gray-700">2. Location (GPS/Landmark):</label>
+                        <input type="text" id="location" name="location" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="e.g., Near City Park, Visakhapatnam" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="proof_photos" class="block text-sm font-medium text-gray-700">3. Proof Photos (Max 5 photos/videos):</label>
+                        <input type="file" id="proof_photos" name="proof_photos" multiple accept="image/*,video/*" class="w-full text-sm" onchange="showImagePreview(event)">
+                        <p class="text-xs text-gray-500 mt-1">Upload files to test backend file saving.</p>
+                    </div>
+                </div>
+                
+                <div id="imagePreviewArea" class="mt-4 flex space-x-3 overflow-x-auto p-2 border border-dashed rounded-lg hidden">
+                    <p class="text-sm text-gray-500">Image previews will appear here.</p>
+                </div>
+                
+                <div id="submissionMessage" class="mt-4 p-3 rounded-lg text-center hidden"></div>
+
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg text-xl mt-4 transition duration-300">
+                    <i class="fas fa-upload mr-2"></i> Submit Grievance
+                </button>
+            </form>
+        </div>
+        
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold text-gray-800">Your Grievances History</h2>
+            <div class="flex items-center space-x-2">
+                <label for="categoryFilter" class="text-sm font-medium text-gray-700">Filter by Category:</label>
+                <select id="categoryFilter" onchange="fetchGrievances(this.value, document.getElementById('statusFilter').value)" class="p-2 border border-gray-300 rounded-lg shadow-sm">
+                    <option value="All Categories">All Categories</option>
+                    <option value="Road Maintenance (Pothole)">Road Maintenance (Pothole)</option>
+                    <option value="Water Supply & Leakage">Water Supply & Leakage</option>
+                    <option value="Stray Dog Menace">Stray Dog Menace</option>
+                    <option value="Electrical (Streetlight Outage)">Electrical (Streetlight Outage)</option>
+                    <option value="General Municipal Service">General Municipal Service</option>
+                </select>
+                <label for="statusFilter" class="text-sm font-medium text-gray-700">Filter by Status:</label>
+                <select id="statusFilter" onchange="fetchGrievances(document.getElementById('categoryFilter').value, this.value)" class="p-2 border border-gray-300 rounded-lg shadow-sm">
+                    <option value="All">All Statuses</option>
+                    <option value="PENDING">Pending</option>
+                    <option value="RESOLVED">Resolved</option>
+                    <option value="FRAUD">Fake/Fraud</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="grievanceList" class="space-y-6">
+            <p class="text-center text-gray-500 p-4 bg-white rounded-xl shadow-md">Loading grievances...</p>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:5000';
+        let isFormOpen = false;
+        let saveInterval;
+
+        function logoutCitizen() {
+            fetch(`${API_BASE}/api/logout`, { method: 'POST', credentials: 'include' })
+                .finally(() => {
+                    localStorage.removeItem('userName');
+                    window.location.href = 'login.html'; 
+                });
+        }
+
+        function toggleComplaintForm() {
+            const container = document.getElementById('complaintFormContainer');
+            isFormOpen = !isFormOpen;
+            container.classList.toggle('open', isFormOpen);
+            
+            if (isFormOpen) {
+                loadDraft();
+                startAutoSave();
+            } else {
+                stopAutoSave();
+            }
+        }
+        
+        function updateMessage(id, message, isError = false) {
+            const area = document.getElementById(id);
+            area.textContent = message;
+            area.className = `mt-4 p-3 rounded-lg text-sm text-center ${isError ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`;
+            area.classList.remove('hidden');
+        }
+        function showImagePreview(event) {
+            const previewArea = document.getElementById('imagePreviewArea');
+            previewArea.innerHTML = '';
+            previewArea.classList.remove('hidden');
+
+            const files = event.target.files;
+            if (files.length === 0) {
+                 previewArea.classList.add('hidden');
+                 return;
+            }
+            for (let i = 0; i < Math.min(5, files.length); i++) {
+                const file = files[i];
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.classList.add('img-preview', 'shadow-md', 'border');
+                        previewArea.appendChild(img);
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    const icon = document.createElement('div');
+                    icon.innerHTML = `<i class="fas fa-video text-gray-500 text-3xl p-5 border rounded-lg shadow-md"></i>`;
+                    icon.classList.add('flex', 'items-center', 'justify-center');
+                    previewArea.appendChild(icon);
+                }
+            }
+        }
+        async function saveDraft() {
+            const rawText = document.getElementById('raw_text').value;
+            const location = document.getElementById('location').value;
+            const saveStatusElement = document.getElementById('draftSaveStatus');
+
+            if (!rawText.trim() && !location.trim()) {
+                saveStatusElement.textContent = 'Draft empty. Skipping auto-save.';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/draft/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ raw_text: rawText, location: location }),
+                    credentials: 'include' 
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    saveStatusElement.textContent = `Draft saved: ${result.saved_at}`;
+                    saveStatusElement.classList.remove('text-red-500');
+                    saveStatusElement.classList.add('text-green-500');
+                } else {
+                    saveStatusElement.textContent = 'Error saving draft.';
+                    saveStatusElement.classList.remove('text-green-500');
+                    saveStatusElement.classList.add('text-red-500');
+                }
+            } catch (error) {
+                saveStatusElement.textContent = 'Network error during auto-save.';
+                saveStatusElement.classList.remove('text-green-500');
+                saveStatusElement.classList.add('text-red-500');
+            }
+        }
+
+        async function loadDraft() {
+            try {
+                const response = await fetch(`${API_BASE}/api/draft/load`, { credentials: 'include' });
+                
+                if (response.status === 200) {
+                    const draft = await response.json();
+                    
+                    document.getElementById('raw_text').value = draft.raw_text;
+                    document.getElementById('location').value = draft.location;
+                    
+                    runGeminiAI(); 
+                    
+                    document.getElementById('draftLoadStatus').textContent = `Draft loaded from ${draft.saved_at}.`;
+                } else {
+                    document.getElementById('draftLoadStatus').textContent = 'No previous draft found.';
+                }
+            } catch (error) {
+                document.getElementById('draftLoadStatus').textContent = 'Error loading draft.';
+            }
+        }
+
+        function startAutoSave() {
+            if (saveInterval) clearInterval(saveInterval);
+            saveInterval = setInterval(saveDraft, 2000);
+        }
+
+        function stopAutoSave() {
+            if (saveInterval) clearInterval(saveInterval);
+        }
+
+        function mockSpeechToText() {
+            const textInput = document.getElementById('raw_text');
+            const mockTextOptions = [
+                "There is a huge pothole near the main market. It needs immediate repair.",
+                "మా ప్రాంతంలో నీరు లీక్ అవుతోంది, దయచేసి చూడండి. (Water is leaking in our area, please check)",
+                "The streetlights near the school are always off after 9 PM. Very unsafe for children.",
+                "There are too many stray dogs causing problems in the central park area.",
+                "The garbage collection service has missed our street for two days now."
+            ];
+            
+            textInput.value = "Transcribing...";
+            setTimeout(() => {
+                const mockText = mockTextOptions[Math.floor(Math.random() * mockTextOptions.length)];
+                textInput.value = mockText;
+                runGeminiAI(); 
+            }, 500);
+        }
+
+        async function runGeminiAI() {
+            const rawText = document.getElementById('raw_text').value;
+            const location = document.getElementById('location').value || 'Location Placeholder';
+            const aiOutput = document.getElementById('aiOutput');
+            const classificationSpan = document.getElementById('aiClassification');
+            const refinedSpan = document.getElementById('aiRefinedText');
+
+            if (!rawText.trim()) {
+                aiOutput.classList.add('hidden');
+                return;
+            }
+
+            aiOutput.classList.remove('hidden');
+            classificationSpan.textContent = 'Analyzing...';
+            refinedSpan.textContent = 'Refining text...';
+
+            try {
+                const formData = new FormData();
+                formData.append('raw_text', rawText);
+                formData.append('location', location); 
+                
+                const response = await fetch(`${API_BASE}/api/preview_ai`, { 
+                    method: 'POST',
+                    body: formData, 
+                    credentials: 'include' 
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    classificationSpan.textContent = result.classification;
+                    refinedSpan.textContent = result.professional_text;
+                } else {
+                    classificationSpan.textContent = `Error: ${result.classification || 'Server failed to classify.'}`;
+                    refinedSpan.textContent = 'Please ensure the API key is set and try again.';
+                }
+            } catch (error) {
+                console.error("AI run error:", error);
+                classificationSpan.textContent = 'Network or Server Error.';
+                refinedSpan.textContent = 'Classification failed.';
+            }
+        }
+
+        async function fetchKPIs() {
+            try {
+                const response = await fetch(`${API_BASE}/api/dashboard/kpi`, { credentials: 'include' });
+                
+                if (response.status === 401) return logoutCitizen();
+
+                const data = await response.json();
+                document.getElementById('userName').textContent = data.user_name;
+
+                document.getElementById('kpiTotal').textContent = data.total_complaints;
+                document.getElementById('kpiResolved').textContent = data.resolved_complaints;
+                document.getElementById('kpiPending').textContent = data.pending_complaints;
+                document.getElementById('kpiFake').textContent = data.fake_complaints;
+                document.getElementById('kpiRewards').textContent = data.reward_points;
+                
+                const ragDiv = document.getElementById('kpiRAG');
+                ragDiv.className = `kpi-card p-4 rag-status-${data.rag_status} rounded-xl shadow-lg text-center border-b-4 border-gray-900`;
+                document.getElementById('kpiRAGText').textContent = data.rag_status;
+
+            } catch (error) {
+                console.error('Error fetching KPIs:', error);
+            }
+        }
+        
+        async function fetchGrievances(category = 'All Categories', status = 'All') {
+            try {
+                document.getElementById('statusFilter').value = status;
+                let url = `${API_BASE}/api/grievances/me`;
+                let params = [];
+
+                if (category && category !== 'All Categories') {
+                    params.push(`category=${encodeURIComponent(category)}`); 
+                }
+                
+                if (status && status !== 'All') {
+                    params.push(`status=${encodeURIComponent(status)}`);
+                }
+                
+                if (params.length > 0) {
+                    url += `?${params.join('&')}`;
+                }
+
+                const response = await fetch(url, { credentials: 'include' });
+                
+                if (response.status === 401) return;
+
+                const data = await response.json();
+                renderGrievances(data);
+                
+            } catch (error) {
+                document.getElementById('grievanceList').innerHTML = '<p class="text-red-600 text-center p-4">Error fetching history. Check server logs.</p>';
+                console.error('Fetch error:', error);
+            }
+        }
+        async function softDeleteGrievance(grievanceId, complaintId) {
+            if (!confirm(`Are you sure you want to delete/archive the resolved complaint ${complaintId}? This will move the record to the Officer Restoration Portal.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/grievance/delete/${grievanceId}`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    displaySubmissionMessage(`Complaint ${complaintId} successfully archived.`, false);
+                    fetchDashboardData();
+                } else {
+                    const result = await response.json();
+                    displaySubmissionMessage(`Deletion Failed: ${result.message}`, true);
+                }
+            } catch (error) {
+                displaySubmissionMessage("Network error during deletion.", true);
+                console.error('Delete Error:', error);
+            }
+        }
+        
+        function renderGrievances(data) {
+            const listDiv = document.getElementById('grievanceList');
+            listDiv.innerHTML = ''; 
+
+            if (data.length === 0) {
+                listDiv.innerHTML = '<p class="text-center text-gray-500 p-4 bg-white rounded-xl shadow-md">No grievances found for this filter.</p>';
+                return;
+            }
+
+            data.forEach(g => {
+                const statusClass = `status-${g.status}`;
+                const card = document.createElement('div');
+                card.classList.add('p-6', 'bg-white', 'rounded-xl', 'shadow-lg', 'border-l-4', 'border-blue-500');
+                
+                let attachmentsHtml = '';
+                if (g.attachments && g.attachments.length > 0) {
+                    attachmentsHtml = '<div class="flex space-x-2 mt-2">';
+                    g.attachments.slice(0, 5).forEach(att => {
+                        const rootPathPart = 'uploads/profile/';
+                        let relativePathForFlask = att.file_path;
+                        if (att.file_path.includes(rootPathPart)) {
+                            relativePathForFlask = att.file_path.substring(att.file_path.indexOf(rootPathPart) + rootPathPart.length);
+                        }
+                        relativePathForFlask = relativePathForFlask.replace(/\\/g, '/');
+
+
+                        if (att.file_type && att.file_type.startsWith('image/')) {
+                            attachmentsHtml += `<img src="${API_BASE}/${relativePathForFlask}" class="img-preview border shadow-sm" onerror="this.src='https://placehold.co/80x80?text=IMG'">`;
+                        } else {
+                            attachmentsHtml += `<div class="img-preview flex items-center justify-center bg-gray-100 border shadow-sm"><i class="fas fa-video text-xl text-gray-400"></i></div>`;
+                        }
+                    });
+                    attachmentsHtml += '</div>';
+                }
+
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-2 border-b pb-2">
+                        <p class="text-xl font-bold text-gray-800">${g.type}</p>
+                        <span class="px-3 py-1 text-xs rounded-full ${g.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' : g.status === 'RESOLVED' ? 'bg-green-100 text-green-700' : g.status === 'FRAUD' ? 'bg-red-100 text-red-700' : 'bg-red-100 text-red-700'}">${g.status}</span>
+                    </div>
+                    
+                    <p class="text-sm text-gray-700 mb-1"><strong>ID:</strong> ${g.complaint_id} | <strong>Filed:</strong> ${g.created_at}</p>
+                    <p class="text-sm text-gray-700 mb-3"><strong>Location:</strong> ${g.location}</p>
+                    
+                    <div class="mt-2 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <p class="text-xs font-semibold text-gray-600 mb-1">Citizen's Original Complaint:</p>
+                        <p class="text-sm text-gray-800 italic">${g.raw_text}</p>
+                    </div>
+
+                    <div class="mt-3 bg-blue-50 p-3 rounded-lg border-l-4 border-blue-400">
+                        <p class="text-xs font-semibold text-blue-700 mb-1">Gemini AI Refined Summary (Sent to Officer):</p>
+                        <p class="text-sm text-gray-800">${g.professional_text}</p>
+                    </div>
+                    
+                    <div class="mt-4 flex justify-between items-center">
+                        <p class="text-sm text-gray-500 flex items-center">
+                            <i class="fas fa-paperclip mr-1"></i> ${g.attachments.length} Proof File(s)
+                        </p>
+                        <!-- Link to Audit -->
+                        <a href="audit.html?id=${g.complaint_id}" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-3 rounded-lg text-sm transition duration-300">
+                            View DLT Audit
+                        </a>
+                    </div>
+                    ${attachmentsHtml} <!-- Display the image previews here -->
+                `;
+                listDiv.appendChild(card);
+            });
+        }
+        
+        document.getElementById('complaintForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submissionMessage = document.getElementById('submissionMessage');
+            submissionMessage.className = 'mt-4 p-3 rounded-lg text-sm text-center bg-blue-100 text-blue-700';
+            submissionMessage.textContent = 'Submitting grievance...';
+            submissionMessage.classList.remove('hidden');
+
+            const formData = new FormData(this);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/grievances/submit`, {
+                    method: 'POST',
+                    body: formData, 
+                    credentials: 'include' 
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && response.status === 201) {
+                    stopAutoSave(); 
+                    await fetch(`${API_BASE}/api/draft/delete`, { method: 'POST', credentials: 'include' });
+                    
+                    updateMessage('submissionMessage', `Success! Grievance ${result.grievance_id} submitted and assigned!`, false);
+                    document.getElementById('complaintForm').reset();
+                    document.getElementById('aiOutput').classList.add('hidden');
+                    document.getElementById('imagePreviewArea').classList.add('hidden');
+                    isFormOpen = false;
+                    setTimeout(() => {
+                        document.getElementById('complaintFormContainer').classList.remove('open');
+                        fetchKPIs();
+                        fetchGrievances(document.getElementById('categoryFilter').value, document.getElementById('statusFilter').value); 
+                    }, 1000);
+                    
+                } else if (response.status === 400) {
+                    updateMessage('submissionMessage', `Submission Rejected: ${result.reason || result.message}`, true);
+                } else {
+                    updateMessage('submissionMessage', `Submission Failed: ${result.message}`, true);
+                }
+            } catch (error) {
+                updateMessage('submissionMessage', `Network Error: Could not connect to the backend.`, true);
+                console.error('Fetch error:', error);
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchKPIs();
+            fetchGrievances('All Categories', 'All'); 
+            
+            const storedName = localStorage.getItem('userName');
+            if (storedName) {
+                document.getElementById('userName').textContent = storedName;
+            }
+        });
+    </script>
+</body>
+</html>
