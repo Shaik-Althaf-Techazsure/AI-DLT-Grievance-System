@@ -12,6 +12,7 @@ import base64
 import hashlib 
 import random
 from math import radians, sin, cos, sqrt, atan2
+import time
 
 DB_USER = os.getenv('DB_USER', 'root')
 DB_PASSWORD = os.getenv('DB_PASSWORD', 'TeChAzSuRe786') 
@@ -22,7 +23,7 @@ SQLALCHEMY_DATABASE_URI = (
 )
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True, origins=["http://127.0.0.1:5000", "http://localhost:5000"])
+CORS(app, supports_credentials=True, origins=["http://127.0.0.1:5000", "http://localhost:5000", os.getenv("RENDER_EXTERNAL_URL", "http://localhost")])
 app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -85,7 +86,8 @@ class User(db.Model):
 class Attachment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     grievance_id = db.Column(db.Integer, db.ForeignKey('grievance.id'), nullable=False)
-    file_path = db.Column(db.String(255))
+    file_path = db.Column(db.String(255), nullable=False) 
+    file_type = db.Column(db.String(50))
 
 class Draft(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -111,11 +113,29 @@ class Officer(db.Model):
     def __repr__(self):
         return f'<Officer {self.officer_id}: {self.name}>'
 
+
+def wait_for_db(max_retries=10, delay=6):
+    print("Attempting to connect to database...")
+    for i in range(max_retries):
+        try:
+            # Attempt to execute a simple operation (like getting engine info)
+            with app.app_context():
+                db.engine.connect()
+            print("Database connected successfully!")
+            return True
+        except Exception as e:
+            print(f"Database connection failed (Attempt {i+1}/{max_retries}): {e}")
+            if i < max_retries - 1:
+                time.sleep(delay)
+    print("FATAL: Database connection failed after all retries.")
+    return False
+
 def init_db():
     with app.app_context():
         db.create_all()
+        db.session.commit()
         Officer_Model = globals().get('Officer')
-        if Officer_Model.query.count() == 0:
+        if Officer_Model and Officer_Model.query.count() == 0:
             mock_officers = [
                 Officer_Model(
                     officer_id='ENG_001', 
@@ -134,7 +154,9 @@ def init_db():
             ]
             db.session.add_all(mock_officers)
             db.session.commit()
-        print("MariaDB database tables created and mock officers populated!")
+            print("MariaDB database tables created and mock officers populated!")
+        else:
+            print("✅ Database check complete. Tables exist and officers are present.")
 
 def generate_user_id(aadhar, name):
     date_str = datetime.now().strftime("%Y%m%d")
@@ -1186,7 +1208,30 @@ def logout_user():
     session.pop('logged_in', None)
     return jsonify({"message": "Logged out successfully."}), 200
 
+def initialize_database():
+    """Initializes directories and ensures database tables are created."""
+    global UPLOAD_FOLDER, COMPLAINT_UPLOAD_FOLDER
+    
+    # 1. Create upload directories
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    os.makedirs(COMPLAINT_UPLOAD_FOLDER, exist_ok=True)
+    
+    # 2. Wait for DB and call init_db()
+    if wait_for_db():
+        init_db()
+    else:
+        # If DB connection fails after retries, log a severe error
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        print("FATAL ERROR: APPLICATION IS STARTING WITHOUT DATABASE CONNECTION.")
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+
+# CRITICAL FOR GUNICORN/RENDER DEPLOYMENT: 
+# The function is called here (outside of the __main__ guard) 
+# to ensure the wait loop and DB initialization run before Gunicorn boots workers.
+initialize_database()
+
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
