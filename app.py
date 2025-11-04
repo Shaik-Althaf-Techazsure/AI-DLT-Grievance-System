@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify, session, render_template, send_from_d
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import create_engine
-from db_connector import get_db_connection_string
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
@@ -1271,6 +1270,7 @@ initialize_database()
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
