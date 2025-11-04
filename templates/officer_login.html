@@ -58,7 +58,6 @@
     </div>
 
     <script>
-        const API_BASE = 'http://127.0.0.1:5000';
 
         function displayMessage(message, isError = false) {
             const area = document.getElementById('message-area');
@@ -82,7 +81,7 @@
             displayMessage("Attempting secure login...", false);
 
             try {
-                const response = await fetch(`${API_BASE}/api/officer/login`, {
+                const response = await fetch(`/api/officer/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email: email, password: password }),
@@ -112,3 +111,4 @@
     </script>
 </body>
 </html>
+
