@@ -149,12 +149,11 @@
     </div>
 
     <script>
-        const API_BASE = 'http://127.0.0.1:5000';
         let isFormOpen = false;
         let saveInterval;
 
         function logoutCitizen() {
-            fetch(`${API_BASE}/api/logout`, { method: 'POST', credentials: 'include' })
+            fetch(`/api/logout`, { method: 'POST', credentials: 'include' })
                 .finally(() => {
                     localStorage.removeItem('userName');
                     window.location.href = 'login.html'; 
@@ -220,7 +219,7 @@
             }
 
             try {
-                const response = await fetch(`${API_BASE}/api/draft/save`, {
+                const response = await fetch(`/api/draft/save`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ raw_text: rawText, location: location }),
@@ -246,7 +245,7 @@
 
         async function loadDraft() {
             try {
-                const response = await fetch(`${API_BASE}/api/draft/load`, { credentials: 'include' });
+                const response = await fetch(`/api/draft/load`, { credentials: 'include' });
                 
                 if (response.status === 200) {
                     const draft = await response.json();
@@ -313,7 +312,7 @@
                 formData.append('raw_text', rawText);
                 formData.append('location', location); 
                 
-                const response = await fetch(`${API_BASE}/api/preview_ai`, { 
+                const response = await fetch(`/api/preview_ai`, { 
                     method: 'POST',
                     body: formData, 
                     credentials: 'include' 
@@ -337,7 +336,7 @@
 
         async function fetchKPIs() {
             try {
-                const response = await fetch(`${API_BASE}/api/dashboard/kpi`, { credentials: 'include' });
+                const response = await fetch(`/api/dashboard/kpi`, { credentials: 'include' });
                 
                 if (response.status === 401) return logoutCitizen();
 
@@ -395,7 +394,7 @@
             }
 
             try {
-                const response = await fetch(`${API_BASE}/api/grievance/delete/${grievanceId}`, {
+                const response = await fetch(`/api/grievance/delete/${grievanceId}`, {
                     method: 'POST',
                     credentials: 'include'
                 });
@@ -440,7 +439,7 @@
 
 
                         if (att.file_type && att.file_type.startsWith('image/')) {
-                            attachmentsHtml += `<img src="${API_BASE}/${relativePathForFlask}" class="img-preview border shadow-sm" onerror="this.src='https://placehold.co/80x80?text=IMG'">`;
+                            attachmentsHtml += `<img src="/${relativePathForFlask}" class="img-preview border shadow-sm" onerror="this.src='https://placehold.co/80x80?text=IMG'">`;
                         } else {
                             attachmentsHtml += `<div class="img-preview flex items-center justify-center bg-gray-100 border shadow-sm"><i class="fas fa-video text-xl text-gray-400"></i></div>`;
                         }
@@ -494,7 +493,7 @@
             const formData = new FormData(this);
             
             try {
-                const response = await fetch(`${API_BASE}/api/grievances/submit`, {
+                const response = await fetch(`/api/grievances/submit`, {
                     method: 'POST',
                     body: formData, 
                     credentials: 'include' 
@@ -504,7 +503,7 @@
                 
                 if (response.ok && response.status === 201) {
                     stopAutoSave(); 
-                    await fetch(`${API_BASE}/api/draft/delete`, { method: 'POST', credentials: 'include' });
+                    await fetch(`/api/draft/delete`, { method: 'POST', credentials: 'include' });
                     
                     updateMessage('submissionMessage', `Success! Grievance ${result.grievance_id} submitted and assigned!`, false);
                     document.getElementById('complaintForm').reset();
@@ -539,4 +538,5 @@
         });
     </script>
 </body>
+
 </html>
