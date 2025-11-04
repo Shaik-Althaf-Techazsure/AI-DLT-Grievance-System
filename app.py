@@ -28,10 +28,10 @@ def get_db_connection_string():
     """
     # Reads environment variables provided by the deployment platform
     # The default values are fallbacks, but should be set explicitly on Render/Cloud.
-    DB_USER = os.environ.get("DB_USER", "default_user")
-    DB_PASSWORD = os.environ.get("DB_PASSWORD", "default_password")
-    DB_HOST = os.environ.get("DB_HOST", "localhost") 
-    DB_NAME = os.environ.get("DB_NAME", "default_db")
+    DB_USER = os.environ.get("DB_USER", "rtgs_db_user")
+    DB_PASSWORD = os.environ.get("DB_PASSWORD", "Og5EybjrteEpv43scuqumfOIBAwQ36aV")
+    DB_HOST = os.environ.get("DB_HOST", "dpg-d43oujuuk2gs739bkurg-a") 
+    DB_NAME = os.environ.get("DB_NAME", "rtgs_db")
 
     # Format the URL string for SQLAlchemy using the PyMySQL connector
     # This string looks like: protocol://user:password@host/database
