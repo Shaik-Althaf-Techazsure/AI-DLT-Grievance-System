@@ -54,7 +54,7 @@ except Exception as e:
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=["http://127.0.0.1:5000", "http://localhost:5000", os.getenv("RENDER_EXTERNAL_URL", "http://localhost")])
-app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
+app.config['DATABASE_URL] = SQLALCHEMY_DATABASE_URI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 UPLOAD_FOLDER = 'uploads/profile'
@@ -1273,6 +1273,7 @@ initialize_database()
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
