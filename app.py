@@ -35,13 +35,13 @@ def get_db_connection_string():
     # This string looks like: protocol://user:password@host/database
     return f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
 
-DATABASE_URL = get_db_connection_string()
+SQLALCHEMY_DATABASE_URI = get_db_connection_string()
 
 engine = None
 
 try:
     engine = create_engine(
-        DATABASE_URL, 
+        SQLALCHEMY_DATABASE_URI, 
         pool_pre_ping=True
     )
     # This line attempts to connect immediately to verify credentials
@@ -54,7 +54,7 @@ except Exception as e:
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=["http://127.0.0.1:5000", "http://localhost:5000", os.getenv("RENDER_EXTERNAL_URL", "http://localhost")])
-app.config['DATABASE_URL'] = SQLALCHEMY_DATABASE_URI
+app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 UPLOAD_FOLDER = 'uploads/profile'
@@ -1273,6 +1273,7 @@ initialize_database()
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
