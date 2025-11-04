@@ -22,10 +22,9 @@
     </div>
 
 <script>
-    const API_BASE = 'http://127.0.0.1:5000';
 
     document.addEventListener('DOMContentLoaded', () => {
-        fetch(`${API_BASE}/api/logout`, {
+        fetch(`/api/logout`, {
             method: 'POST',
             credentials: 'include' 
         })
@@ -44,3 +43,4 @@
 
 </body>
 </html>
+
