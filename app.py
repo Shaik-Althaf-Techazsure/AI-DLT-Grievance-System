@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify, session, render_template, send_from_d
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import create_engine
-from psycopg2.errors import OperationalError
 from sqlalchemy.exc import OperationalError as SQLAlchemyOperationalError
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -1274,6 +1273,7 @@ initialize_database()
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
