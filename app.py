@@ -1186,17 +1186,7 @@ def logout_user():
     session.pop('logged_in', None)
     return jsonify({"message": "Logged out successfully."}), 200
 
-def initialize_database():
-    global UPLOAD_FOLDER, COMPLAINT_UPLOAD_FOLDER
-    
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    os.makedirs(COMPLAINT_UPLOAD_FOLDER, exist_ok=True)
-    
-    if 'db' in globals():
-        init_db()
-
-initialize_database()
-
 if __name__ == '__main__':
     app.run(debug=True)
+
 
