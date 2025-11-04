@@ -2,6 +2,8 @@ from flask import Flask, request, jsonify, session, render_template, send_from_d
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import create_engine
+from psycopg2.errors import OperationalError
+from sqlalchemy.exc import OperationalError as SQLAlchemyOperationalError
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
@@ -15,8 +17,6 @@ import random
 import pymysql
 from math import radians, sin, cos, sqrt, atan2
 import time
-
-DATABASE_URL = get_db_connection_string()
 
 def get_db_connection_string():
     """
@@ -34,7 +34,11 @@ def get_db_connection_string():
 
     # Format the URL string for SQLAlchemy using the PyMySQL connector
     # This string looks like: protocol://user:password@host/database
-    return f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
+    return f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
+
+DATABASE_URL = get_db_connection_string()
+
+engine = None
 
 try:
     engine = create_engine(
@@ -1270,6 +1274,7 @@ initialize_database()
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
