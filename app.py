@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify, session, render_template, send_from_directory, redirect, url_for
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import create_engine
+from db_connector import get_db_connection_string
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
@@ -11,16 +13,42 @@ import requests
 import base64
 import hashlib 
 import random
+import pymysql
 from math import radians, sin, cos, sqrt, atan2
 import time
 
-DB_USER = os.getenv('DB_USER', 'root')
-DB_PASSWORD = os.getenv('DB_PASSWORD', 'TeChAzSuRe786') 
-DB_HOST = os.getenv('DB_HOST', 'localhost')
-DB_NAME = os.getenv('DB_NAME', 'rtgs_grievance')
-SQLALCHEMY_DATABASE_URI = (
-    f'mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}'
-)
+DATABASE_URL = get_db_connection_string()
+
+def get_db_connection_string():
+    """
+    Constructs the SQLAlchemy connection string by reading environment variables.
+    
+    This is essential for secure cloud deployment (e.g., on Render), 
+    as it avoids hardcoding sensitive credentials.
+    """
+    # Reads environment variables provided by the deployment platform
+    # The default values are fallbacks, but should be set explicitly on Render/Cloud.
+    DB_USER = os.environ.get("DB_USER", "default_user")
+    DB_PASSWORD = os.environ.get("DB_PASSWORD", "default_password")
+    DB_HOST = os.environ.get("DB_HOST", "localhost") 
+    DB_NAME = os.environ.get("DB_NAME", "default_db")
+
+    # Format the URL string for SQLAlchemy using the PyMySQL connector
+    # This string looks like: protocol://user:password@host/database
+    return f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
+
+try:
+    engine = create_engine(
+        DATABASE_URL, 
+        pool_pre_ping=True
+    )
+    # This line attempts to connect immediately to verify credentials
+    with engine.connect() as connection:
+        print("Database connection verified successfully!")
+except Exception as e:
+    # Log a failure, but often the app continues to start
+    print(f"FATAL: Database connection failed. Error: {e}")
+    engine = None 
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=["http://127.0.0.1:5000", "http://localhost:5000", os.getenv("RENDER_EXTERNAL_URL", "http://localhost")])
@@ -1208,6 +1236,17 @@ def logout_user():
     session.pop('logged_in', None)
     return jsonify({"message": "Logged out successfully."}), 200
 
+@app.route('/health')
+def health_check():
+    # Example route to check if the DB is actually working
+    if engine is not None:
+        try:
+            with engine.connect():
+                return {"status": "ok", "db_status": "connected"}
+        except:
+            return {"status": "ok", "db_status": "connection_error"}
+    return {"status": "ok", "db_status": "not_configured"}
+
 def initialize_database():
     """Initializes directories and ensures database tables are created."""
     global UPLOAD_FOLDER, COMPLAINT_UPLOAD_FOLDER
@@ -1232,6 +1271,7 @@ initialize_database()
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
