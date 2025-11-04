@@ -34,7 +34,7 @@ def get_db_connection_string():
 
     # Format the URL string for SQLAlchemy using the PyMySQL connector
     # This string looks like: protocol://user:password@host/database
-    return f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
+    return f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
 
 DATABASE_URL = get_db_connection_string()
 
@@ -1274,6 +1274,7 @@ initialize_database()
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
